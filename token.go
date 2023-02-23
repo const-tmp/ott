@@ -2,6 +2,7 @@ package ott
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"sync"
 	"time"
 )
@@ -25,6 +26,10 @@ func NewToken(ttl int64) *Token {
 	_, _ = rand.Read(t.Data[:])
 	t.Expires = time.Now().Add(time.Duration(ttl)).Unix()
 	return t
+}
+
+func (t *Token) String() string {
+	return base64.StdEncoding.EncodeToString(t.Data[:])
 }
 
 func NewStore(ttlSec int64) *Store {
