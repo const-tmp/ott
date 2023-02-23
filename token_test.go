@@ -15,11 +15,11 @@ func init() {
 }
 
 func TestToken(t *testing.T) {
-	t.Log(NewToken(1))
+	t.Log(NewToken(5 * time.Second))
 }
 
 func TestDecodeData(t *testing.T) {
-	token := NewToken(1)
+	token := NewToken(5 * time.Second)
 	var b [32]byte
 	n, err := base64.StdEncoding.Decode(b[:], []byte(token.String()))
 	if err != nil {
@@ -44,7 +44,7 @@ func TestSlice(t *testing.T) {
 }
 
 func TestStore_Pop(t *testing.T) {
-	store := NewStore(3600)
+	store := NewStore(5*time.Second, 5*time.Second)
 	token := store.NewToken()
 	res, ok := store.Pop(token.Data)
 	if !ok {
@@ -55,9 +55,11 @@ func TestStore_Pop(t *testing.T) {
 	}
 }
 func TestStore(t *testing.T) {
-	store := NewStore(5)
+	store := NewStore(5*time.Second, 5*time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	go store.RemoveExpiredLoop(ctx)
 
 	wg := new(sync.WaitGroup)
 	for i := 0; i < 100; i++ {
@@ -91,19 +93,16 @@ Loop:
 func action(store *Store, i int) {
 	n := rand.Int31n(10)
 	switch {
-	case n < 4:
+	case n < 5:
 		token := store.NewToken()
 		fmt.Printf("created token: %s\n", base64.StdEncoding.EncodeToString(token.Data[:]))
-	case n > 6:
-		fmt.Println("removing expired")
-		store.RemoveExpired()
 	default:
 		fmt.Printf("goroutine %d len = %d\n", i, len(store.slice))
 	}
 }
 
 func BenchmarkStore(b *testing.B) {
-	store := NewStore(5)
+	store := NewStore(5*time.Second, 5*time.Second)
 
 	for i := 0; i < b.N; i++ {
 		token := store.NewToken()
@@ -115,4 +114,13 @@ func BenchmarkStore(b *testing.B) {
 			b.Error("tokens are not equal")
 		}
 	}
+}
+
+func TestTime(t *testing.T) {
+	now := time.Now()
+	t.Log(now.Unix())
+	t.Log(now.UnixMilli())
+	t.Log(now.UnixMicro())
+	t.Log(now.UnixNano())
+	t.Log(now.Add(time.Nanosecond).UnixNano())
 }

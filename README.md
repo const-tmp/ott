@@ -12,4 +12,7 @@ token, ok := store.Pop(token.Data)
 
 // remove all expired tokens
 store.RemoveExpired()
+
+// start backgroud loop removing expired
+go store.RemoveExpiredLoop(context.TODO())
 ```

@@ -1,6 +1,7 @@
 package ott
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"sync"
@@ -10,21 +11,22 @@ import (
 type (
 	Token struct {
 		Data    [32]byte
-		Expires int64
+		Expires time.Time
 	}
 
 	Store struct {
 		sync.RWMutex
-		slice []*Token
-		set   map[[32]byte]struct{}
-		ttl   int64
+		slice         []*Token
+		set           map[[32]byte]struct{}
+		ttl           time.Duration
+		cleanupPeriod time.Duration
 	}
 )
 
-func NewToken(ttl int64) *Token {
+func NewToken(ttl time.Duration) *Token {
 	t := new(Token)
 	_, _ = rand.Read(t.Data[:])
-	t.Expires = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+	t.Expires = time.Now().Add(ttl)
 	return t
 }
 
@@ -41,12 +43,13 @@ func TokenDataFromBase64(b64 string) ([32]byte, error) {
 	return b, nil
 }
 
-func NewStore(ttlSec int64) *Store {
+func NewStore(ttl, cleanupPeriod time.Duration) *Store {
 	return &Store{
-		RWMutex: sync.RWMutex{},
-		slice:   make([]*Token, 0, 1024),
-		set:     make(map[[32]byte]struct{}),
-		ttl:     ttlSec,
+		RWMutex:       sync.RWMutex{},
+		slice:         make([]*Token, 0, 1024),
+		set:           make(map[[32]byte]struct{}),
+		ttl:           ttl,
+		cleanupPeriod: cleanupPeriod,
 	}
 }
 
@@ -78,6 +81,19 @@ func (s *Store) RemoveExpired() {
 	}
 }
 
+func (s *Store) RemoveExpiredLoop(ctx context.Context) {
+	ticker := time.NewTicker(s.cleanupPeriod)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			s.RemoveExpired()
+		}
+	}
+}
+
 func (s *Store) add(token *Token) {
 	s.Lock()
 	s.slice = append(s.slice, token)
@@ -99,8 +115,8 @@ func (s *Store) pop(data [32]byte) (*Token, bool) {
 	for i, token := range s.slice {
 		if token.Data == data {
 			s.slice = append(s.slice[:i], s.slice[i:]...)
-			now := time.Now().Unix()
-			if token.Expires <= now {
+			now := time.Now()
+			if !now.Before(token.Expires) {
 				return nil, false
 			}
 			return token, true
@@ -110,16 +126,16 @@ func (s *Store) pop(data [32]byte) (*Token, bool) {
 }
 
 func (s *Store) getExpiredIdx() int {
-	now := time.Now().Unix()
+	now := time.Now()
 
 	imax := -1
 
-	if len(s.slice) > 0 && s.slice[0].Expires > now {
+	if len(s.slice) > 0 && now.Before(s.slice[0].Expires) {
 		return imax
 	}
 
 	for i, token := range s.slice {
-		if token.Expires <= now {
+		if !now.Before(token.Expires) {
 			imax = i
 		} else {
 			break
