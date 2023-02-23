@@ -24,7 +24,7 @@ type (
 func NewToken(ttl int64) *Token {
 	t := new(Token)
 	_, _ = rand.Read(t.Data[:])
-	t.Expires = time.Now().Add(time.Duration(ttl)).Unix()
+	t.Expires = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 	return t
 }
 

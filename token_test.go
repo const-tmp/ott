@@ -19,14 +19,21 @@ func TestToken(t *testing.T) {
 }
 
 func TestDecodeData(t *testing.T) {
+	token := NewToken(1)
 	var b [32]byte
-	n, err := base64.StdEncoding.Decode(b[:], []byte(NewToken(1).String()))
+	n, err := base64.StdEncoding.Decode(b[:], []byte(token.String()))
 	if err != nil {
 		t.Error(err)
 	}
 	if n != 32 {
 		t.Error("wrong N")
 	}
+	if token.Data != b {
+		t.Error("tokens are not equal")
+	}
+	t.Log(token.Data)
+	t.Log(b)
+	t.Log(b == token.Data)
 }
 
 func TestSlice(t *testing.T) {
@@ -36,6 +43,17 @@ func TestSlice(t *testing.T) {
 	}
 }
 
+func TestStore_Pop(t *testing.T) {
+	store := NewStore(3600)
+	token := store.NewToken()
+	res, ok := store.Pop(token.Data)
+	if !ok {
+		t.Error("not ok")
+	}
+	if token.Data != res.Data {
+		t.Error("tokens are not equal")
+	}
+}
 func TestStore(t *testing.T) {
 	store := NewStore(5)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
