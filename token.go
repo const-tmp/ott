@@ -32,6 +32,15 @@ func (t *Token) String() string {
 	return base64.StdEncoding.EncodeToString(t.Data[:])
 }
 
+func TokenDataFromBase64(b64 string) ([32]byte, error) {
+	var b [32]byte
+	_, err := base64.StdEncoding.Decode(b[:], []byte(b64))
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return b, nil
+}
+
 func NewStore(ttlSec int64) *Store {
 	return &Store{
 		RWMutex: sync.RWMutex{},

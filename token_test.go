@@ -18,6 +18,17 @@ func TestToken(t *testing.T) {
 	t.Log(NewToken(1))
 }
 
+func TestDecodeData(t *testing.T) {
+	var b [32]byte
+	n, err := base64.StdEncoding.Decode(b[:], []byte(NewToken(1).String()))
+	if err != nil {
+		t.Error(err)
+	}
+	if n != 32 {
+		t.Error("wrong N")
+	}
+}
+
 func TestSlice(t *testing.T) {
 	slice := []int{1, 2, 3, 4, 5}
 	for i := 0; i < 5; i++ {
