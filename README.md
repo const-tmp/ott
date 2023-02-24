@@ -1,8 +1,8 @@
 # ott
 Dead simple one-time tokens
 ```
-// create store with 1 hour tokens
-store := NewStore(3600)
+// create store with 1 hour tokens with 1 hour autoremove period
+store := NewStore(time.Hour, time.Hour)
 
 // create new token
 token := store.NewToken()
@@ -13,6 +13,6 @@ token, ok := store.Pop(token.Data)
 // remove all expired tokens
 store.RemoveExpired()
 
-// start backgroud loop removing expired
+// start background loop removing expired tokens
 go store.RemoveExpiredLoop(context.TODO())
 ```
