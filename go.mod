@@ -1,3 +1,3 @@
-module github.com/nullc4t/ott
+module github.com/const-tmp/ott
 
 go 1.19
